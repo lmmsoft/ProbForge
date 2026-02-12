@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meme 概率协议 - 完整 Demo</title>
+
+  <!-- Ethers.js v6 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+
+  <!-- SIWE 库 -->
+  <script src="https://unpkg.com/@siwe/core@1.0.0/dist/siwe.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      padding: 40px 0;
+    }
+
+    .header h1 {
+      font-size: 3em;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      color: #8892b0;
+      font-size: 1.1em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h3 {
+      color: #667eea;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.3em;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85em;
+      font-weight: 600;
+    }
+
+    .status-connected {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    .status-disconnected {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    .status-pending {
+      background: rgba(245, 158, 11, 0.2);
+      color: #f59e0b;
+    }
+
+    button {
+      padding: 12px 24px;
+      margin: 5px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 14px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .log-container {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 16px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .log-entry {
+      padding: 4px 8px;
+      margin: 2px 0;
+      border-radius: 4px;
+    }
+
+    .log-info { background: rgba(6, 182, 212, 0.2); color: #06b6d4; }
+    .log-success { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .log-error { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    .log-warning { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+
+    .price-display {
+      font-size: 2.5em;
+      font-weight: bold;
+      text-align: center;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      margin: 10px 0;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .stat-item {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.8em;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .stat-label {
+      font-size: 0.85em;
+      color: #8892b0;
+      margin-top: 5px;
+    }
+
+    .wallet-info {
+      background: rgba(102, 126, 234, 0.1);
+      border: 1px solid rgba(102, 126, 234, 0.3);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 15px;
+    }
+
+    .wallet-info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .wallet-info-row:last-child {
+      border-bottom: none;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #fff;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .pulse {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .alert {
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin: 15px 0;
+      border-left: 4px solid;
+    }
+
+    .alert-warning {
+      background: rgba(245, 158, 11, 0.1);
+      border-color: #f59e0b;
+      color: #f59e0b;
+    }
+
+    .alert-success {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: #10b981;
+      color: #10b981;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>🎲 Meme 概率协议</h1>
+      <p>去中心化预测市场 • AMM + Orderbook • 三阶段自适应</p>
+    </div>
+
+    <!-- 状态栏 -->
+    <div class="card" style="margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div>
+          <span id="connectionStatus" class="status-badge status-disconnected">未连接</span>
+          <span id="wsStatus" class="status-badge status-disconnected" style="margin-left: 10px;">WS: 未连接</span>
+          <span id="chainStatus" class="status-badge status-pending" style="margin-left: 10px;">网络: 检测中</span>
+        </div>
+        <div style="color: #8892b0; font-size: 0.9em;">
+          <span id="blockNumber">区块: --</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- 1. 钱包连接 & SIWE -->
+      <div class="card">
+        <h3>📱 1. 钱包连接 & SIWE 认证</h3>
+
+        <button id="connectBtn" class="btn-primary" onclick="connectWallet()">
+          🔌 连接钱包
+        </button>
+
+        <div id="walletSection" style="display: none; margin-top: 20px;">
+          <div class="wallet-info">
+            <div class="wallet-info-row">
+              <span>地址:</span>
+              <span id="walletAddress" style="font-family: monospace;">--</span>
+            </div>
+            <div class="wallet-info-row">
+              <span>网络:</span>
+              <span id="walletNetwork">--</span>
+            </div>
+            <div class="wallet-info-row">
+              <span>ETH 余额:</span>
+              <span id="walletBalance">--</span>
+            </div>
+            <div class="wallet-info-row">
+              <span>USDC 余额:</span>
+              <span id="usdcBalance">--</span>
+            </div>
+          </div>
+
+          <div id="siweSection" style="margin-top: 15px;">
+            <div id="siweStatus" class="alert alert-warning" style="display: none;">
+              ⚠️ 请完成 SIWE 签名以验证身份
+            </div>
+            <button id="siweBtn" class="btn-secondary" onclick="signInWithEthereum()" style="width: 100%; margin-top: 10px;">
+              ✍️ SIWE 签名认证
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 创建市场 -->
+      <div class="card">
+        <h3>📝 2. 创建市场</h3>
+
+        <div id="createMarketForm">
+          <label>问题描述</label>
+          <input type="text" id="marketQuestion" placeholder="例如: 比特币年底能突破 $100k?">
+
+          <label>模板类型</label>
+          <select id="marketTemplate">
+            <option value="0">二元选项 (YES/NO)</option>
+            <option value="1">数值区间</option>
+          </select>
+
+          <label>初始 YES 价格 (%)</label>
+          <input type="number" id="initialPrice" value="50" min="1" max="99">
+
+          <label>结算时间 (天数)</label>
+          <input type="number" id="resolutionDays" value="7" min="1">
+
+          <button class="btn-primary" onclick="createMarket()" style="width: 100%; margin-top: 15px;">
+            创建市场 (需 0.01 ETH 保证金)
+          </button>
+        </div>
+
+        <div id="createMarketResult" style="display: none; margin-top: 15px;">
+          <div class="alert alert-success">
+            ✅ 市场创建成功！
+            <br><br>
+            <small>地址: <span id="newMarketAddress">--</span></small>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 市场列表 -->
+      <div class="card">
+        <h3>📊 3. 市场列表</h3>
+
+        <div id="marketList">
+          <p style="color: #8892b0; text-align: center;">连接钱包后加载市场列表</p>
+        </div>
+
+        <button class="btn-secondary" onclick="loadMarkets()" style="width: 100%; margin-top: 10px;">
+          🔄 刷新市场
+        </button>
+      </div>
+
+      <!-- 4. AMM 交易 -->
+      <div class="card">
+        <h3>💱 4. AMM 交易 (Stage 0)</h3>
+
+        <div id="tradingSection">
+          <label>选择市场</label>
+          <select id="tradingMarket" onchange="updateTradingUI()">
+            <option value="">-- 请先创建或加载市场 --</option>
+          </select>
+
+          <div class="price-display" id="currentPrice">
+            YES: $0.50 | NO: $0.50
+          </div>
+
+          <label>交易方向</label>
+          <select id="tradeSide">
+            <option value="YES">买入 YES</option>
+            <option value="NO">买入 NO</option>
+          </select>
+
+          <label>交易金额 (USDC)</label>
+          <input type="number" id="tradeAmount" value="10" min="1">
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+            <div class="stat-item">
+              <div class="stat-value" id="expectedShares">--</div>
+              <div class="stat-label">预计份额</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="effectivePrice">--</div>
+              <div class="stat-label">有效价格</div>
+            </div>
+          </div>
+
+          <button class="btn-primary" onclick="executeTrade()" style="width: 100%; margin-top: 15px;">
+            💱 执行交易
+          </button>
+        </div>
+      </div>
+
+      <!-- 5. 我的持仓 -->
+      <div class="card">
+        <h3>💼 5. 我的持仓</h3>
+
+        <div id="positionSection">
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-value" id="myYesShares">0</div>
+              <div class="stat-label">YES 份额</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="myNoShares">0</div>
+              <div class="stat-label">NO 份额</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="myTotalValue">$0</div>
+              <div class="stat-label">总价值</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. 实时日志 -->
+      <div class="card" style="grid-column: 1 / -1;">
+        <h3>📋 6. 实时日志</h3>
+
+        <div class="log-container" id="logs"></div>
+
+        <div style="margin-top: 15px; display: flex; gap: 10px;">
+          <button class="btn-secondary" onclick="clearLogs()">
+            🗑️ 清空日志
+          </button>
+          <button class="btn-secondary" onclick="exportLogs()">
+            📥 导出日志
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==================== 配置 ====================
+    const CONFIG = {
+      CHAIN_ID: 84532, // Base Sepolia
+      RPC_URL: 'https://sepolia.base.org',
+      WS_URL: 'wss://sepolia.base.org',
+      // 合约地址（部署后填入）
+      FACTORY_ADDRESS: '',
+      USDC_ADDRESS: '0x036CbD53842c5426634e7929541eA2318763Ec45', // Base Sepolia USDC
+    };
+
+    // 全局状态
+    let provider, signer, address;
+    let contracts = {};
+    let wsProvider = null;
+    let siweNonce = null;
+    let isConnected = false;
+    let isSignedIn = false;
+    let markets = [];
+
+    // ==================== 日志工具 ====================
+    function log(msg, type = 'info') {
+      const logs = document.getElementById('logs');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      const time = new Date().toLocaleTimeString();
+      entry.textContent = `[${time}] ${msg}`;
+      logs.appendChild(entry);
+      logs.scrollTop = logs.scrollHeight;
+      console.log(`[${type.toUpperCase()}]`, msg);
+    }
+
+    function clearLogs() {
+      document.getElementById('logs').innerHTML = '';
+      log('日志已清空', 'info');
+    }
+
+    function exportLogs() {
+      const logs = document.getElementById('logs').innerText;
+      const blob = new Blob([logs], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `logs-${Date.now()}.txt`;
+      a.click();
+      log('日志已导出', 'success');
+    }
+
+    // ==================== 1. 钱包连接 ====================
+    async function connectWallet() {
+      const btn = document.getElementById('connectBtn');
+
+      try {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading"></span> 连接中...';
+
+        if (!window.ethereum) {
+          throw new Error('请安装 MetaMask 或其他 Web3 钱包');
+        }
+
+        // 请求连接
+        log('请求钱包连接...', 'info');
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+        provider = new ethers.BrowserProvider(window.ethereum);
+        signer = await provider.getSigner();
+        address = await signer.getAddress();
+
+        const network = await provider.getNetwork();
+        log(`已连接: ${address.slice(0, 8)}...${address.slice(-6)}`, 'success');
+
+        // 检查网络
+        if (network.chainId !== BigInt(CONFIG.CHAIN_ID)) {
+          log(`网络错误! 当前: ${network.chainId}, 需要: ${CONFIG.CHAIN_ID}`, 'warning');
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: ethers.toQuantity(CONFIG.CHAIN_ID) }]
+            });
+          } catch (e) {
+            log(`请手动切换到 Base Sepolia`, 'warning');
+          }
+        }
+
+        // 更新 UI
+        await updateWalletUI();
+
+        // 启动 WebSocket
+        await startWebSocket();
+
+        // 监听事件
+        setupEventListeners();
+
+        isConnected = true;
+        updateConnectionStatus('connected');
+
+        // 显示 SIWE 提示
+        document.getElementById('siweStatus').style.display = 'block';
+        document.getElementById('siweBtn').disabled = false;
+
+      } catch (e) {
+        log(`连接失败: ${e.message}`, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '🔌 连接钱包';
+      }
+    }
+
+    async function updateWalletUI() {
+      // 余额
+      const ethBalance = await provider.getBalance(address);
+      const ethFormatted = ethers.formatEther(ethBalance);
+
+      // USDC 余额
+      const usdcContract = new ethers.Contract(
+        CONFIG.USDC_ADDRESS,
+        ['function balanceOf(address) view returns (uint256)'],
+        provider
+      );
+      const usdcBalance = await usdcContract.balanceOf(address);
+      const usdcFormatted = ethers.formatUnits(usdcBalance, 6);
+
+      // 网络
+      const network = await provider.getNetwork();
+      const networkName = network.chainId === BigInt(CONFIG.CHAIN_ID) ? 'Base Sepolia' : `Chain ${network.chainId}`;
+
+      // 更新显示
+      document.getElementById('walletSection').style.display = 'block';
+      document.getElementById('walletAddress').textContent = `${address.slice(0, 10)}...${address.slice(-8)}`;
+      document.getElementById('walletNetwork').textContent = networkName;
+      document.getElementById('walletBalance').textContent = `${parseFloat(ethFormatted).toFixed(4)} ETH`;
+      document.getElementById('usdcBalance').textContent = `${parseFloat(usdcFormatted).toFixed(2)} USDC`;
+
+      document.getElementById('connectBtn').innerHTML = '✅ 已连接';
+      document.getElementById('connectBtn').disabled = true;
+
+      log(`ETH: ${ethFormatted}, USDC: ${usdcFormatted}`, 'info');
+    }
+
+    function updateConnectionStatus(status) {
+      const badge = document.getElementById('connectionStatus');
+      badge.className = `status-badge status-${status}`;
+      badge.textContent = status === 'connected' ? '已连接' : status === 'disconnected' ? '未连接' : '连接中';
+    }
+
+    // ==================== 2. SIWE 认证 ====================
+    async function signInWithEthereum() {
+      try {
+        log('开始 SIWE 认证...', 'info');
+        const btn = document.getElementById('siweBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading"></span> 签名中...';
+
+        // 获取 nonce（模拟）
+        siweNonce = Math.floor(Math.random() * 2**53).toString();
+
+        // 构造 SIWE 消息
+        const message = `${address} 想要登录 Meme 概率协议
+
+URI: https://meme-probability.pages.dev
+版本: 1
+链 ID: ${CONFIG.CHAIN_ID}
+Nonce: ${siweNonce}
+发行时间: ${new Date().toISOString()}
+
+我接受 Meme 概率协议的服务条款`;
+
+        // 请求签名
+        const signature = await signer.signMessage(message);
+
+        log(`✅ SIWE 签名成功!`, 'success');
+        log(`消息哈希: ${ethers.hashMessage(message).slice(0, 10)}...`, 'info');
+        log(`签名: ${signature.slice(0, 20)}...`, 'info');
+
+        // 验证签名（后端应该做这个）
+        const recovered = ethers.verifyMessage(message, signature);
+        if (recovered.toLowerCase() === address.toLowerCase()) {
+          log('✅ 签名验证通过!', 'success');
+
+          // 更新 UI
+          document.getElementById('siweStatus').className = 'alert alert-success';
+          document.getElementById('siweStatus').innerHTML = '✅ SIWE 认证已完成';
+          btn.innerHTML = '✅ 已认证';
+
+          isSignedIn = true;
+
+          // 记录审计日志
+          await recordAuditLog('SIWE_SIGN_IN', {
+            message: message.slice(0, 50) + '...',
+            signatureHash: ethers.hashMessage(message)
+          });
+        } else {
+          throw new Error('签名验证失败');
+        }
+
+      } catch (e) {
+        log(`SIWE 失败: ${e.message}`, 'error');
+        const btn = document.getElementById('siweBtn');
+        btn.disabled = false;
+        btn.innerHTML = '✍️ SIWE 签名认证';
+      }
+    }
+
+    // ==================== 3. WebSocket 实时通信 ====================
+    async function startWebSocket() {
+      try {
+        log('连接 WebSocket...', 'info');
+
+        wsProvider = new ethers.WebSocketProvider(CONFIG.WS_URL);
+
+        // 监听新区块
+        wsProvider.on('block', (blockNumber) => {
+          document.getElementById('blockNumber').textContent = `区块: ${blockNumber}`;
+          document.getElementById('wsStatus').className = 'status-badge status-connected';
+          document.getElementById('wsStatus').textContent = 'WS: 已连接';
+
+          // 每 10 个区块记录一次
+          if (blockNumber % 10 === 0) {
+            log(`📦 新区块: ${blockNumber}`, 'info');
+          }
+        });
+
+        log('✅ WebSocket 已连接', 'success');
+
+        // 监听账户变化
+        if (window.ethereum) {
+          window.ethereum.on('accountsChanged', (accounts) => {
+            log('账户已变化，重新加载...', 'warning');
+            setTimeout(() => location.reload(), 1000);
+          });
+
+          window.ethereum.on('chainChanged', () => {
+            log('网络已变化，重新加载...', 'warning');
+            setTimeout(() => location.reload(), 1000);
+          });
+        }
+
+      } catch (e) {
+        log(`WebSocket 失败: ${e.message}`, 'error');
+      }
+    }
+
+    function setupEventListeners() {
+      // 这里可以监听特定合约事件
+      // 例如: contracts.factory.on('MarketCreated', ...)
+    }
+
+    // ==================== 4. 创建市场 ====================
+    async function createMarket() {
+      if (!isConnected) {
+        log('请先连接钱包', 'warning');
+        return;
+      }
+
+      try {
+        const question = document.getElementById('marketQuestion').value;
+        const templateId = parseInt(document.getElementById('marketTemplate').value);
+        const initialPrice = document.getElementById('initialPrice').value;
+        const days = document.getElementById('resolutionDays').value;
+
+        if (!question) {
+          log('请输入问题描述', 'warning');
+          return;
+        }
+
+        log(`创建市场: ${question}`, 'info');
+
+        // 这里调用智能合约
+        // const factory = new ethers.Contract(CONFIG.FACTORY_ADDRESS, FACTORY_ABI, signer);
+        // const tx = await factory.createMarket(question, templateId, ..., { value: ethers.parseEther('0.01') });
+
+        // 模拟创建
+        log('发送交易...', 'info');
+        await new Promise(r => setTimeout(r, 2000));
+
+        const mockAddress = '0x' + Math.random().toString(16).slice(2, 42);
+        log(`✅ 市场创建成功! 地址: ${mockAddress}`, 'success');
+
+        document.getElementById('createMarketResult').style.display = 'block';
+        document.getElementById('newMarketAddress').textContent = mockAddress;
+
+        // 记录审计日志
+        await recordAuditLog('CREATE_MARKET', {
+          question,
+          templateId,
+          marketAddress: mockAddress
+        });
+
+        // 添加到市场列表
+        markets.push({
+          address: mockAddress,
+          question,
+          stage: 0,
+          yesPrice: parseInt(initialPrice) / 100,
+          totalVolume: 0
+        });
+
+        updateMarketList();
+        updateTradingMarketSelect();
+
+      } catch (e) {
+        log(`创建失败: ${e.message}`, 'error');
+      }
+    }
+
+    // ==================== 5. 加载市场列表 ====================
+    async function loadMarkets() {
+      if (!isConnected) {
+        log('请先连接钱包', 'warning');
+        return;
+      }
+
+      log('加载市场列表...', 'info');
+
+      // 模拟数据
+      if (markets.length === 0) {
+        markets = [
+          {
+            address: '0xabc123...',
+            question: '比特币年底能突破 $100k?',
+            stage: 0,
+            yesPrice: 0.65,
+            totalVolume: 50000
+          },
+          {
+            address: '0xdef456...',
+            question: '以太坊会超越比特币吗?',
+            stage: 0,
+            yesPrice: 0.35,
+            totalVolume: 30000
+          }
+        ];
+      }
+
+      updateMarketList();
+      updateTradingMarketSelect();
+
+      log(`✅ 加载 ${markets.length} 个市场`, 'success');
+    }
+
+    function updateMarketList() {
+      const container = document.getElementById('marketList');
+
+      if (markets.length === 0) {
+        container.innerHTML = '<p style="color: #8892b0; text-align: center;">暂无市场</p>';
+        return;
+      }
+
+      container.innerHTML = markets.map(m => `
+        <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin-bottom: 10px; cursor: pointer;" onclick="selectMarket('${m.address}')">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 600; margin-bottom: 4px;">${m.question}</div>
+              <div style="font-size: 0.85em; color: #8892b0;">Stage ${m.stage} • 交易量: $${m.totalVolume.toLocaleString()}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 1.2em; font-weight: bold; color: #667eea;">${(m.yesPrice * 100).toFixed(0)}%</div>
+              <div style="font-size: 0.85em; color: #8892b0;">YES</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateTradingMarketSelect() {
+      const select = document.getElementById('tradingMarket');
+      select.innerHTML = '<option value="">-- 选择市场 --</option>' +
+        markets.map(m => `<option value="${m.address}">${m.question.slice(0, 30)}...</option>`).join('');
+    }
+
+    function selectMarket(marketAddress) {
+      document.getElementById('tradingMarket').value = marketAddress;
+      updateTradingUI();
+    }
+
+    function updateTradingUI() {
+      const marketAddress = document.getElementById('tradingMarket').value;
+      const market = markets.find(m => m.address === marketAddress);
+
+      if (market) {
+        const yesPrice = market.yesPrice;
+        const noPrice = 1 - yesPrice;
+        document.getElementById('currentPrice').textContent = `YES: $${yesPrice.toFixed(2)} | NO: $${noPrice.toFixed(2)}`;
+        updateTradeEstimate();
+      }
+    }
+
+    function updateTradeEstimate() {
+      const amount = parseFloat(document.getElementById('tradeAmount').value) || 0;
+      const side = document.getElementById('tradeSide').value;
+      const marketAddress = document.getElementById('tradingMarket').value;
+      const market = markets.find(m => m.address === marketAddress);
+
+      if (market && amount > 0) {
+        // 简化的价格计算（实际应该调用合约）
+        const price = side === 'YES' ? market.yesPrice : (1 - market.yesPrice);
+        const shares = amount / price;
+
+        document.getElementById('expectedShares').textContent = shares.toFixed(2);
+        document.getElementById('effectivePrice').textContent = `$${price.toFixed(2)}`;
+      }
+    }
+
+    // ==================== 6. 执行交易 ====================
+    async function executeTrade() {
+      if (!isConnected) {
+        log('请先连接钱包', 'warning');
+        return;
+      }
+
+      const marketAddress = document.getElementById('tradingMarket').value;
+      if (!marketAddress) {
+        log('请选择市场', 'warning');
+        return;
+      }
+
+      const side = document.getElementById('tradeSide').value;
+      const amount = document.getElementById('tradeAmount').value;
+
+      try {
+        log(`执行交易: ${side} $${amount}`, 'info');
+
+        // 这里调用智能合约
+        // const market = new ethers.Contract(marketAddress, MARKET_ABI, signer);
+        // const tx = await market.buy(side === 'YES' ? 0 : 1, ethers.parseUnits(amount, 6));
+
+        // 模拟交易
+        await new Promise(r => setTimeout(r, 1500));
+
+        log(`✅ 交易成功! ${side} $${amount}`, 'success');
+
+        // 更新持仓显示
+        await updatePositions();
+
+        // 记录审计日志
+        await recordAuditLog('TRADE', {
+          market: marketAddress,
+          side,
+          amount,
+          timestamp: Date.now()
+        });
+
+      } catch (e) {
+        log(`交易失败: ${e.message}`, 'error');
+      }
+    }
+
+    async function updatePositions() {
+      // 模拟持仓数据
+      document.getElementById('myYesShares').textContent = '150';
+      document.getElementById('myNoShares').textContent = '50';
+      document.getElementById('myTotalValue').textContent = '$100';
+    }
+
+    // ==================== 7. 审计日志 ====================
+    async function recordAuditLog(action, data) {
+      const logEntry = {
+        address,
+        action,
+        data,
+        timestamp: Date.now(),
+        userAgent: navigator.userAgent,
+        // 在实际应用中应该hash IP地址
+        ipHash: 'hashed_ip_placeholder'
+      };
+
+      // 存储到 localStorage
+      const logs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
+      logs.push(logEntry);
+      localStorage.setItem('auditLogs', JSON.stringify(logs));
+
+      // 在实际应用中，这里应该发送到后端
+      log(`📝 审计日志: ${action}`, 'info');
+    }
+
+    // ==================== 页面加载 ====================
+    window.addEventListener('load', () => {
+      log('🚀 Meme 概率协议 Demo 已就绪', 'success');
+      log('📝 网络: Base Sepolia (Chain ID: 84532)', 'info');
+      log('💡 提示: 请先连接钱包，然后完成 SIWE 认证', 'info');
+
+      // 检查是否已有连接
+      if (window.ethereum && window.ethereum.selectedAddress) {
+        log('检测到已连接的钱包，点击连接按钮初始化...', 'info');
+      }
+
+      // 交易金额变化时更新预估
+      document.getElementById('tradeAmount').addEventListener('input', updateTradeEstimate);
+    });
+  </script>
+</body>
+</html>

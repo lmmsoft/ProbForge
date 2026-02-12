@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meme 概率协议 - Chainstack WebSocket</title>
+
+  <!-- Ethers.js v6 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      padding: 30px 0;
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 24px;
+      margin: 20px 0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .card h3 {
+      color: #667eea;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .status-item {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .status-label {
+      font-size: 0.85em;
+      color: #8892b0;
+      margin-bottom: 5px;
+    }
+
+    .status-value {
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+
+    .status-connected { color: #10b981; }
+    .status-disconnected { color: #ef4444; }
+    .status-pending { color: #f59e0b; }
+
+    button {
+      padding: 12px 24px;
+      margin: 5px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 14px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      width: 100%;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .wallet-info {
+      background: rgba(102, 126, 234, 0.1);
+      border: 1px solid rgba(102, 126, 234, 0.3);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 15px;
+    }
+
+    .wallet-info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .wallet-info-row:last-child {
+      border-bottom: none;
+    }
+
+    .log-container {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 8px;
+      padding: 15px;
+      max-height: 350px;
+      overflow-y: auto;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .log-entry {
+      padding: 4px 8px;
+      margin: 2px 0;
+      border-radius: 4px;
+    }
+
+    .log-info { background: rgba(6, 182, 212, 0.2); color: #06b6d4; }
+    .log-success { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .log-error { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    .log-warning { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #fff;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .pulse {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 10px 0;
+      border-left: 4px solid;
+    }
+
+    .alert-warning {
+      background: rgba(245, 158, 11, 0.1);
+      border-color: #f59e0b;
+      color: #f59e0b;
+      font-size: 0.9em;
+    }
+
+    .alert-success {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: #10b981;
+      color: #10b981;
+    }
+
+    pre {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 10px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 11px;
+      color: #8892b0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>🎲 Meme 概率协议</h1>
+      <p style="color: #8892b0;">DRPC WebSocket + MetaMask 钱包连接</p>
+    </div>
+
+    <!-- 连接状态 -->
+    <div class="card">
+      <h3>🔗 连接状态</h3>
+      <div class="status-grid">
+        <div class="status-item">
+          <div class="status-label">钱包连接</div>
+          <div class="status-value status-disconnected" id="walletStatus">未连接</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">DRPC WebSocket</div>
+          <div class="status-value status-disconnected" id="wsStatus">未连接</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">当前区块</div>
+          <div class="status-value" id="blockNumber">--</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">网络</div>
+          <div class="status-value" id="networkName">--</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 钱包连接 -->
+    <div class="card">
+      <h3>📱 1. 钱包连接</h3>
+
+      <div class="alert alert-warning">
+        💡 <strong>提示:</strong> DRPC WebSocket (wss://base-sepolia.drpc.org) 用于读取链上数据，MetaMask 用于发送交易。
+      </div>
+
+      <button id="connectBtn" class="btn-primary" onclick="connectWallet()">
+        🔌 连接 MetaMask 钱包
+      </button>
+
+      <div id="walletSection" style="display: none; margin-top: 20px;">
+        <div class="wallet-info">
+          <div class="wallet-info-row">
+            <span>地址:</span>
+            <span id="walletAddress" style="font-family: monospace;">--</span>
+          </div>
+          <div class="wallet-info-row">
+            <span>网络:</span>
+            <span id="walletNetwork">--</span>
+          </div>
+          <div class="wallet-info-row">
+            <span>ETH 余额:</span>
+            <span id="walletBalance">--</span>
+          </div>
+          <div class="wallet-info-row">
+            <span>Chain ID:</span>
+            <span id="chainId">--</span>
+          </div>
+        </div>
+
+        <div id="networkWarning" class="alert alert-warning" style="display: none; margin-top: 15px;">
+          ⚠️ 当前网络不是 Base Mainnet，请在 MetaMask 中切换
+        </div>
+      </div>
+    </div>
+
+    <!-- 测试功能 -->
+    <div class="card">
+      <h3>🧪 2. 功能测试</h3>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+        <button class="btn-primary" onclick="testGetBlockNumber()" id="testBlockBtn" disabled>
+          📦 获取区块号
+        </button>
+        <button class="btn-primary" onclick="testGetBalance()" id="testBalanceBtn" disabled>
+          💰 查询余额
+        </button>
+        <button class="btn-primary" onclick="testListenBlocks()" id="testListenBtn" disabled>
+          👂 监听新区块
+        </button>
+        <button class="btn-primary" onclick="testSendTransaction()" id="testSendBtn" disabled>
+          📤 发送交易
+        </button>
+      </div>
+
+      <div id="testResult" style="margin-top: 15px; display: none;">
+        <pre id="testResultContent"></pre>
+      </div>
+    </div>
+
+    <!-- 实时日志 -->
+    <div class="card">
+      <h3>📋 3. 实时日志</h3>
+
+      <div class="log-container" id="logs"></div>
+
+      <button onclick="clearLogs()" style="margin-top: 10px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
+        🗑️ 清空日志
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // ==================== 配置 ====================
+    const CONFIG = {
+      // DRPC WebSocket 端点 (Base Sepolia 测试网，无需认证)
+      DRPC_WSS: 'wss://base-sepolia.drpc.org',
+      DRPC_HTTPS: 'https://base-sepolia.drpc.org',
+
+      // Base Sepolia 测试网
+      CHAIN_ID: 84532,
+      CHAIN_NAME: 'Base Sepolia',
+
+      // 备用 RPC
+      FALLBACK_RPC: 'https://sepolia.base.org',
+    };
+
+    // 全局变量
+    let walletProvider = null;      // MetaMask provider (用于交易)
+    let chainstackProvider = null;  // Chainstack provider (用于读取)
+    let signer = null;
+    let address = null;
+    let blockListener = null;
+
+    // ==================== 日志工具 ====================
+    function log(msg, type = 'info') {
+      const logs = document.getElementById('logs');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      const time = new Date().toLocaleTimeString();
+      entry.textContent = `[${time}] ${msg}`;
+      logs.appendChild(entry);
+      logs.scrollTop = logs.scrollHeight;
+      console.log(`[${type.toUpperCase()}]`, msg);
+    }
+
+    function clearLogs() {
+      document.getElementById('logs').innerHTML = '';
+      log('日志已清空', 'info');
+    }
+
+    function showResult(content) {
+      const resultDiv = document.getElementById('testResult');
+      const contentDiv = document.getElementById('testResultContent');
+      resultDiv.style.display = 'block';
+      contentDiv.textContent = typeof content === 'object' ? JSON.stringify(content, null, 2) : content;
+    }
+
+    // ==================== 1. 连接 DRPC WebSocket ====================
+    async function connectDRPC() {
+      try {
+        log('🔌 连接 DRPC WebSocket...', 'info');
+
+        // DRPC 公共端点，无需认证
+        const wsUrl = CONFIG.DRPC_WSS;
+
+        log(`WebSocket URL: ${wsUrl}`, 'info');
+
+        // ethers.js v6 方式
+        chainstackProvider = new ethers.WebSocketProvider(wsUrl);
+
+        // 测试连接
+        const blockNumber = await chainstackProvider.getBlockNumber();
+        log(`✅ DRPC WebSocket 已连接!`, 'success');
+        log(`📦 当前区块: ${blockNumber}`, 'info');
+
+        updateStatus('wsStatus', 'connected', '已连接');
+        document.getElementById('blockNumber').textContent = blockNumber;
+
+        // 设置网络名称
+        document.getElementById('networkName').textContent = CONFIG.CHAIN_NAME;
+
+        return true;
+      } catch (e) {
+        log(`❌ DRPC 连接失败: ${e.message}`, 'error');
+        log(`🔄 尝试使用备用 RPC...`, 'warning');
+
+        try {
+          // 回退到 HTTPS RPC
+          chainstackProvider = new ethers.JsonRpcProvider(CONFIG.FALLBACK_RPC);
+          const blockNumber = await chainstackProvider.getBlockNumber();
+          log(`✅ 备用 RPC 已连接! 当前区块: ${blockNumber}`, 'success');
+          updateStatus('wsStatus', 'connected', '备用 RPC');
+          document.getElementById('blockNumber').textContent = blockNumber;
+          return true;
+        } catch (fallbackError) {
+          log(`❌ 备用 RPC 也失败: ${fallbackError.message}`, 'error');
+          updateStatus('wsStatus', 'disconnected', '连接失败');
+          return false;
+        }
+      }
+    }
+
+    // ==================== 2. 连接 MetaMask 钱包 ====================
+    async function connectWallet() {
+      const btn = document.getElementById('connectBtn');
+
+      try {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading"></span> 连接中...';
+
+        // 检查 MetaMask
+        if (!window.ethereum) {
+          throw new Error('未检测到 MetaMask，请先安装 MetaMask 扩展');
+        }
+
+        log('📱 请求 MetaMask 连接...', 'info');
+
+        // 请求账户访问
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+        // 创建 provider
+        walletProvider = new ethers.BrowserProvider(window.ethereum);
+        signer = await walletProvider.getSigner();
+        address = await signer.getAddress();
+
+        log(`✅ 钱包已连接: ${address.slice(0, 8)}...${address.slice(-6)}`, 'success');
+
+        // 获取网络信息
+        const network = await walletProvider.getNetwork();
+        const chainId = Number(network.chainId);
+
+        log(`🌐 网络: ${network.name} (Chain ID: ${chainId})`, 'info');
+
+        // 更新 UI
+        await updateWalletUI(chainId);
+
+        // 检查网络
+        if (chainId !== CONFIG.CHAIN_ID) {
+          log(`⚠️ 网络不匹配! 需要: ${CONFIG.CHAIN_ID}, 当前: ${chainId}`, 'warning');
+          document.getElementById('networkWarning').style.display = 'block';
+          document.getElementById('networkWarning').textContent = `⚠️ 当前网络不是 Base Sepolia (需要 Chain ID: ${CONFIG.CHAIN_ID})`;
+        } else {
+          log(`✅ 网络正确!`, 'success');
+        }
+
+        // 启用测试按钮
+        enableTestButtons();
+
+        updateStatus('walletStatus', 'connected', '已连接');
+
+        // 同时连接 DRPC WebSocket
+        await connectDRPC();
+
+        btn.innerHTML = '✅ 已连接';
+
+      } catch (e) {
+        log(`❌ 连接失败: ${e.message}`, 'error');
+
+        if (e.code === 4001) {
+          log('用户拒绝连接', 'warning');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '🔌 连接 MetaMask 钱包';
+      }
+    }
+
+    async function updateWalletUI(chainId) {
+      // 获取余额
+      const balance = await walletProvider.getBalance(address);
+      const balanceEth = ethers.formatEther(balance);
+
+      // 网络名称
+      const networkNames = {
+        1: 'Ethereum',
+        8453: 'Base Mainnet',
+        84532: 'Base Sepolia',
+        11155111: 'Sepolia'
+      };
+      const networkName = networkNames[chainId] || `Chain ${chainId}`;
+
+      // 更新显示
+      document.getElementById('walletSection').style.display = 'block';
+      document.getElementById('walletAddress').textContent = `${address.slice(0, 10)}...${address.slice(-8)}`;
+      document.getElementById('walletNetwork').textContent = networkName;
+      document.getElementById('walletBalance').textContent = `${parseFloat(balanceEth).toFixed(4)} ETH`;
+      document.getElementById('chainId').textContent = chainId;
+      document.getElementById('networkName').textContent = networkName;
+
+      log(`💰 余额: ${balanceEth} ETH`, 'info');
+    }
+
+    function updateStatus(elementId, status, text) {
+      const element = document.getElementById(elementId);
+      element.className = `status-value status-${status}`;
+      element.textContent = text;
+    }
+
+    function enableTestButtons() {
+      document.getElementById('testBlockBtn').disabled = false;
+      document.getElementById('testBalanceBtn').disabled = false;
+      document.getElementById('testListenBtn').disabled = false;
+      document.getElementById('testSendBtn').disabled = false;
+    }
+
+    // ==================== 3. 测试功能 ====================
+
+    async function testGetBlockNumber() {
+      try {
+        log('📦 获取当前区块号...', 'info');
+
+        // 优先使用 Chainstack
+        const provider = chainstackProvider || walletProvider;
+        const blockNumber = await provider.getBlockNumber();
+
+        log(`✅ 当前区块: ${blockNumber}`, 'success');
+        showResult({ blockNumber, source: chainstackProvider ? 'DRPC WebSocket' : 'MetaMask' });
+        document.getElementById('blockNumber').textContent = blockNumber;
+
+      } catch (e) {
+        log(`❌ 获取失败: ${e.message}`, 'error');
+      }
+    }
+
+    async function testGetBalance() {
+      try {
+        log('💰 查询余额...', 'info');
+
+        const provider = chainstackProvider || walletProvider;
+        const balance = await provider.getBalance(address);
+        const balanceEth = ethers.formatEther(balance);
+
+        log(`✅ 余额: ${balanceEth} ETH`, 'success');
+        showResult({
+          address: `${address.slice(0, 10)}...${address.slice(-8)}`,
+          balance: balanceEth,
+          balanceWei: balance.toString()
+        });
+
+      } catch (e) {
+        log(`❌ 查询失败: ${e.message}`, 'error');
+      }
+    }
+
+    function testListenBlocks() {
+      try {
+        if (blockListener) {
+          // 停止监听
+          chainstackProvider.removeAllListeners('block');
+          blockListener = null;
+          document.getElementById('testListenBtn').textContent = '👂 监听新区块';
+          log('⏹️ 已停止监听新区块', 'warning');
+          return;
+        }
+
+        log('👂 开始监听新区块...', 'info');
+
+        // 使用 Chainstack WebSocket 监听
+        const provider = chainstackProvider || walletProvider;
+
+        provider.on('block', (blockNumber) => {
+          log(`📦 新区块: ${blockNumber}`, 'info');
+          document.getElementById('blockNumber').textContent = blockNumber;
+        });
+
+        blockListener = true;
+        document.getElementById('testListenBtn').textContent = '⏹️ 停止监听';
+        log('✅ 监听已启动，等待新区块...', 'success');
+
+      } catch (e) {
+        log(`❌ 监听失败: ${e.message}`, 'error');
+      }
+    }
+
+    async function testSendTransaction() {
+      try {
+        if (!signer) {
+          throw new Error('请先连接钱包');
+        }
+
+        log('📤 发送测试交易...', 'info');
+
+        // 发送 0 ETH 到自己（测试交易）
+        const tx = {
+          to: address,
+          value: 0
+        };
+
+        log('请在 MetaMask 中确认交易...', 'warning');
+
+        const txResponse = await signer.sendTransaction(tx);
+
+        log(`✅ 交易已发送! Hash: ${txResponse.hash.slice(0, 10)}...`, 'success');
+        log('⏳ 等待交易确认...', 'info');
+
+        const receipt = await txResponse.wait();
+
+        log(`✅ 交易已确认! 区块: ${receipt.blockNumber}`, 'success');
+        showResult({
+          txHash: txResponse.hash,
+          blockNumber: receipt.blockNumber,
+          gasUsed: receipt.gasUsed.toString()
+        });
+
+      } catch (e) {
+        log(`❌ 交易失败: ${e.message}`, 'error');
+      }
+    }
+
+    // ==================== 4. 监听 MetaMask 事件 ====================
+    function setupMetaMaskListeners() {
+      if (window.ethereum) {
+        // 账户变化
+        window.ethereum.on('accountsChanged', (accounts) => {
+          if (accounts.length === 0) {
+            log('⚠️ 钱包已断开连接', 'warning');
+            location.reload();
+          } else {
+            log('🔄 账户已变化，重新加载...', 'warning');
+            setTimeout(() => location.reload(), 1000);
+          }
+        });
+
+        // 网络变化
+        window.ethereum.on('chainChanged', () => {
+          log('🔄 网络已变化，重新加载...', 'warning');
+          setTimeout(() => location.reload(), 1000);
+        });
+      }
+    }
+
+    // ==================== 页面加载 ====================
+    window.addEventListener('load', () => {
+      log('🚀 页面已加载', 'success');
+      log('📡 网络: Base Sepolia (Chain ID: 84532)', 'info');
+      log('🔌 WebSocket: wss://base-sepolia.drpc.org (无需认证)', 'info');
+      log('💡 提示: 点击"连接 MetaMask 钱包"即可自动连接 DRPC WebSocket', 'info');
+
+      // 检查是否有已连接的钱包
+      if (window.ethereum && window.ethereum.selectedAddress) {
+        log('检测到已连接的钱包，点击连接按钮初始化...', 'info');
+      }
+
+      // 设置监听器
+      setupMetaMaskListeners();
+    });
+  </script>
+</body>
+</html>

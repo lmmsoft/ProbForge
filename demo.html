@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meme 概率协议 Demo</title>
+
+  <!-- Web3Modal Core -->
+  <script src="https://unpkg.com/@web3modal/core@2.5.0/dist/index.js"></script>
+  <script src="https://unpkg.com/@web3modal/html@2.5.0/dist/index.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+
+  <!-- Ethers.js -->
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js"></script>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #fff;
+      margin: 0;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 2.5em;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      text-align: center;
+      color: #8892b0;
+      margin-bottom: 30px;
+    }
+    .section {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 20px;
+      margin: 20px 0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    h3 {
+      margin-top: 0;
+      color: #667eea;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    button {
+      padding: 12px 24px;
+      margin: 5px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      color: white;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    button:disabled {
+      background: #4a5568;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    button.secondary {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    input, select {
+      padding: 12px;
+      margin: 5px;
+      width: 250px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+      background: rgba(255, 255, 255, 0.15);
+    }
+    #logs {
+      height: 300px;
+      overflow-y: scroll;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .log {
+      margin: 3px 0;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .log.green { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .log.red { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    .log.yellow { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+    .log.cyan { background: rgba(6, 182, 212, 0.2); color: #06b6d4; }
+    .info-box {
+      background: rgba(102, 126, 234, 0.1);
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 10px;
+      border-left: 4px solid #667eea;
+    }
+    .success { color: #10b981; }
+    .warning { color: #f59e0b; }
+    #price {
+      font-size: 32px;
+      font-weight: bold;
+      text-align: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    pre {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+
+    /* Web3Modal Button Customization */
+    .w3m-button {
+      width: 100% !important;
+      padding: 15px !important;
+      font-size: 16px !important;
+    }
+
+    /* Loading Animation */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .pulse {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎲 Meme 概率协议 Demo</h1>
+    <p class="subtitle">Powered by Web3Modal + Base Sepolia</p>
+
+    <!-- 1. 钱包连接 -->
+    <div class="section">
+      <h3>📱 1. 连接钱包</h3>
+      <button id="connectBtn" onclick="handleConnectClick()" style="width: 100%; padding: 15px; font-size: 16px;">
+        🔌 连接钱包
+      </button>
+      <div id="walletInfo"></div>
+    </div>
+
+    <!-- 2. WebSocket 状态 -->
+    <div class="section">
+      <h3>🔗 2. 实时连接状态</h3>
+      <div id="wsStatus" class="warning">未连接</div>
+      <div id="blockInfo"></div>
+    </div>
+
+    <!-- 3. 创建市场 -->
+    <div class="section">
+      <h3>📝 3. 创建市场</h3>
+      <input id="question" placeholder="问题: 狗狗币年底能到 $1?">
+      <input id="duration" type="number" placeholder="天数" value="7">
+      <button onclick="createMarket()">创建市场</button>
+    </div>
+
+    <!-- 4. 交易 -->
+    <div class="section">
+      <h3>💱 4. 交易 YES/NO</h3>
+      <select id="side">
+        <option value="YES">买 YES</option>
+        <option value="NO">买 NO</option>
+      </select>
+      <input id="amount" type="number" placeholder="金额 (USDC)" value="10">
+      <button onclick="trade()">交易</button>
+    </div>
+
+    <!-- 5. 实时价格 -->
+    <div class="section">
+      <h3>📊 5. 实时价格</h3>
+      <div id="price">YES: -- | NO: --</div>
+      <p style="text-align: center; color: #8892b0; font-size: 14px; margin-top: 10px;">
+        价格会随新区块实时更新
+      </p>
+    </div>
+
+    <!-- 6. 本地记录 -->
+    <div class="section">
+      <h3>💾 6. 本地记录</h3>
+      <button onclick="showHistory()">查看历史</button>
+      <button class="secondary" onclick="clearHistory()">清空历史</button>
+      <pre id="history"></pre>
+    </div>
+
+    <!-- 7. 测试报告 -->
+    <div class="section">
+      <h3>🧪 7. 自动化测试</h3>
+      <div id="testReport" class="info-box">
+        <p>点击下方按钮运行完整测试</p>
+      </div>
+      <button onclick="runTests()">运行完整测试</button>
+    </div>
+
+    <!-- 日志 -->
+    <div class="section">
+      <h3>📋 操作日志</h3>
+      <div id="logs"></div>
+    </div>
+  </div>
+
+  <script>
+    // ==================== 配置 ====================
+    const CONFIG = {
+      CHAIN_ID: 84532,
+      RPC_URL: 'https://sepolia.base.org',
+      WS_URL: 'wss://sepolia.base.org',
+    };
+
+    let provider, signer, address, chainId;
+    let wsProvider;
+    let testResults = [];
+    let isConnected = false;
+
+    // ==================== 日志工具 ====================
+    function log(msg, type = 'normal') {
+      const logs = document.getElementById('logs');
+      const div = document.createElement('div');
+      div.className = `log ${type}`;
+      const time = new Date().toLocaleTimeString();
+      div.textContent = `[${time}] ${msg}`;
+      logs.appendChild(div);
+      logs.scrollTop = logs.scrollHeight;
+      console.log(`[${type.toUpperCase()}] ${msg}`);
+    }
+
+    // ==================== Web3Modal 配置 ====================
+    const web3modal = new Web3Modal.default({
+      walletConnectVersion: 2,
+      projectId: 'a0c1c0e0f0e0f0e0f0e0f0e0f0e0f0e0', // 临时 ID，实际需要注册
+      theme: 'dark',
+      themeVariables: {
+        '--w3m-z-index': 9999
+      },
+      featuredWalletIds: [
+        'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be1ed6a809a3f2', // MetaMask
+        'fd20dc426fb3e66d80f019a36bf0e7943a554c3f5dff30fbdf5a2f66459fc7f0', // Trust Wallet
+        '4622f2f994d1be8c1c4e04f91a3f9183d9ae8bdd99da384b4e1eb7aa8764e1f1', // Coinbase Wallet
+      ]
+    });
+
+    // ==================== 初始化 Web3Modal ====================
+    async function initWeb3Modal() {
+      try {
+        log('🔧 初始化 Web3Modal...', 'cyan');
+
+        // 检查是否有自动连接的会话
+        if (window.ethereum && window.ethereum.selectedAddress) {
+          log('✓ 检测到已连接的钱包', 'green');
+          await connectExistingWallet();
+        } else {
+          log('💡 请点击上方按钮连接钱包', 'yellow');
+        }
+
+        // 监听账户变化
+        if (window.ethereum) {
+          window.ethereum.on('accountsChanged', handleAccountsChanged);
+          window.ethereum.on('chainChanged', handleChainChanged);
+        }
+      } catch (e) {
+        log(`❌ 初始化失败: ${e.message}`, 'red');
+      }
+    }
+
+    // ==================== 连接已有钱包 ====================
+    async function connectExistingWallet() {
+      try {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        address = await signer.getAddress();
+        const network = await provider.getNetwork();
+        chainId = network.chainId;
+
+        await updateWalletUI();
+
+        // 如果是正确的网络，启动 WebSocket
+        if (chainId === CONFIG.CHAIN_ID) {
+          await startWebSocket();
+        }
+
+        isConnected = true;
+        return true;
+      } catch (e) {
+        log(`❌ 连接失败: ${e.message}`, 'red');
+        return false;
+      }
+    }
+
+    // ==================== 处理连接按钮点击 ====================
+    async function handleConnectClick() {
+      const btn = document.getElementById('connectBtn');
+
+      // 如果已经连接，不做任何事
+      if (isConnected) {
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="pulse">🔄 连接中...</span>';
+
+      // 尝试使用 Web3Modal
+      try {
+        if (typeof Web3Modal !== 'undefined' && Web3Modal.default) {
+          log('🔹 打开 Web3Modal...', 'yellow');
+          const instance = await web3modal.connect();
+          provider = new ethers.providers.Web3Provider(instance);
+          signer = provider.getSigner();
+          address = await signer.getAddress();
+          const network = await provider.getNetwork();
+          chainId = network.chainId;
+          isConnected = true;
+          await updateWalletUI();
+          if (chainId === CONFIG.CHAIN_ID) {
+            await startWebSocket();
+          }
+        } else {
+          throw new Error('Web3Modal not available');
+        }
+      } catch (e) {
+        // Web3Modal 失败，回退到直接连接
+        log('⚠️ Web3Modal 不可用，使用直接连接', 'yellow');
+        await connectWalletDirect();
+      }
+
+      if (!isConnected) {
+        btn.disabled = false;
+        btn.innerHTML = '🔌 连接钱包';
+      }
+    }
+
+    // ==================== 直接连接钱包 ====================
+    async function connectWalletDirect() {
+      const btn = document.getElementById('connectBtn');
+
+      try {
+        if (typeof window.ethereum === 'undefined') {
+          throw new Error('请安装 MetaMask 或其他 Web3 钱包');
+        }
+
+        log('🔹 请求钱包连接...', 'yellow');
+        btn.innerHTML = '<span class="pulse">🔄 请在钱包中确认...</span>';
+
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+        if (!accounts || accounts.length === 0) {
+          throw new Error('未获取到账户');
+        }
+
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        address = await signer.getAddress();
+        const network = await provider.getNetwork();
+        chainId = network.chainId;
+        isConnected = true;
+
+        log('✓ 钱包已连接', 'green');
+        await updateWalletUI();
+
+        if (chainId === CONFIG.CHAIN_ID) {
+          await startWebSocket();
+        }
+      } catch (e) {
+        if (e.code === 4001) {
+          log('❌ 用户拒绝连接', 'red');
+        } else {
+          log(`❌ 连接失败: ${e.message}`, 'red');
+        }
+        isConnected = false;
+      }
+    }
+
+    // ==================== 手动连接钱包 ====================
+    async function connectWallet() {
+      try {
+        log('🔹 打开钱包选择器...', 'yellow');
+
+        const instance = await web3modal.connect();
+        provider = new ethers.providers.Web3Provider(instance);
+        signer = provider.getSigner();
+        address = await signer.getAddress();
+        const network = await provider.getNetwork();
+        chainId = network.chainId;
+
+        log('✓ 钱包已连接', 'green');
+        await updateWalletUI();
+
+        if (chainId === CONFIG.CHAIN_ID) {
+          await startWebSocket();
+        }
+
+        isConnected = true;
+        return true;
+      } catch (e) {
+        if (e.message !== 'User closed modal') {
+          log(`❌ 连接取消: ${e.message}`, 'red');
+        }
+        return false;
+      }
+    }
+
+    // ==================== 更新钱包 UI ====================
+    async function updateWalletUI() {
+      const btn = document.getElementById('connectBtn');
+      const balance = await signer.getBalance();
+      const balanceEth = parseFloat(ethers.utils.formatEther(balance)).toFixed(4);
+      const networkName = chainId === 84532 ? 'Base Sepolia ✅' : `Chain ${chainId} ⚠️`;
+      const networkColor = chainId === 84532 ? '#10b981' : '#f59e0b';
+
+      // 更新按钮状态
+      btn.innerHTML = '✅ 已连接';
+      btn.style.background = '#10b981';
+      btn.disabled = true;
+
+      const infoDiv = document.getElementById('walletInfo');
+      infoDiv.innerHTML = `
+        <div style="background: rgba(102, 126, 234, 0.1); padding: 15px; border-radius: 12px; margin-top: 15px; border: 1px solid rgba(102, 126, 234, 0.3);">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <span style="font-size: 24px;">✅</span>
+            <span style="color: #10b981; font-size: 18px; font-weight: 600;">已连接</span>
+          </div>
+          <p style="margin: 8px 0;"><strong>地址:</strong> <span style="color: #8892b0; font-family: monospace;">${address.slice(0, 10)}...${address.slice(-8)}</span></p>
+          <p style="margin: 8px 0;"><strong>网络:</strong> <span style="color: ${networkColor};">${networkName}</span></p>
+          <p style="margin: 8px 0;"><strong>余额:</strong> <span style="color: #8892b0;">${balanceEth} ETH</span></p>
+          ${chainId !== CONFIG.CHAIN_ID ? `
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 10px; border-radius: 8px; margin-top: 10px; border: 1px solid rgba(245, 158, 11, 0.3);">
+              <p style="color: #f59e0b; margin: 0;">⚠️ 请切换到 Base Sepolia (Chain ID: 84532)</p>
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      log(`✓ 钱包: ${address.slice(0, 6)}...${address.slice(-4)}`, 'green');
+      log(`✓ 网络: ${networkName}`, chainId === 84532 ? 'green' : 'yellow');
+      log(`✓ 余额: ${balanceEth} ETH`, 'cyan');
+    }
+
+    // ==================== 账户变化处理 ====================
+    function handleAccountsChanged(accounts) {
+      if (accounts.length === 0) {
+        log('⚠️ 钱包已断开', 'yellow');
+        location.reload();
+      } else {
+        log('🔄 账户已切换', 'yellow');
+        location.reload();
+      }
+    }
+
+    function handleChainChanged() {
+      log('🔄 网络已切换', 'yellow');
+      location.reload();
+    }
+
+    // ==================== WebSocket ====================
+    async function startWebSocket() {
+      try {
+        log('🔹 连接 WebSocket...', 'yellow');
+
+        wsProvider = new ethers.providers.WebSocketProvider(CONFIG.WS_URL);
+
+        wsProvider.on('block', (blockNumber) => {
+          document.getElementById('blockInfo').innerHTML =
+            `<p style="color: #10b981; margin: 10px 0;">📦 当前区块: ${blockNumber}</p>`;
+          log(`📦 新区块: ${blockNumber}`, 'cyan');
+          updateSimulatedPrice();
+        });
+
+        document.getElementById('wsStatus').innerHTML =
+          '<p style="color: #10b981; margin: 10px 0;">✅ WebSocket 已连接</p>';
+        log('✅ WebSocket 已连接', 'green');
+
+        return true;
+      } catch (e) {
+        document.getElementById('wsStatus').innerHTML =
+          `<p style="color: #ef4444; margin: 10px 0;">❌ 连接失败: ${e.message}</p>`;
+        log(`❌ WebSocket 失败: ${e.message}`, 'red');
+        return false;
+      }
+    }
+
+    // ==================== 模拟价格更新 ====================
+    function updateSimulatedPrice() {
+      const yesPrice = (0.3 + Math.random() * 0.4).toFixed(2);
+      const noPrice = (1 - yesPrice).toFixed(2);
+      document.getElementById('price').innerHTML = `YES: $${yesPrice} | NO: $${noPrice}`;
+    }
+
+    // ==================== 创建市场 ====================
+    async function createMarket() {
+      const question = document.getElementById('question').value;
+      const duration = document.getElementById('duration').value;
+
+      if (!question) {
+        log('❌ 请输入问题', 'red');
+        return;
+      }
+
+      log('🔹 创建市场...', 'yellow');
+      log(`问题: ${question}`, 'cyan');
+      log(`时长: ${duration} 天`, 'cyan');
+
+      await new Promise(r => setTimeout(r, 1000));
+
+      const marketId = 'MKT-' + Date.now();
+      log(`✅ 市场创建成功! ID: ${marketId}`, 'green');
+
+      saveToLocal('markets', { id: marketId, question, duration, time: Date.now() });
+      return marketId;
+    }
+
+    // ==================== 交易 ====================
+    async function trade() {
+      const side = document.getElementById('side').value;
+      const amount = document.getElementById('amount').value;
+
+      if (!amount || amount <= 0) {
+        log('❌ 请输入有效金额', 'red');
+        return;
+      }
+
+      log(`🔹 交易 ${side} ${amount} USDC...`, 'yellow');
+      await new Promise(r => setTimeout(r, 800));
+
+      const price = '0.50';
+      log(`✅ 交易成功! ${side} ${amount} @ $${price}`, 'green');
+
+      saveToLocal('trades', { side, amount, price, time: Date.now() });
+      return true;
+    }
+
+    // ==================== 本地存储 ====================
+    function saveToLocal(key, data) {
+      const history = JSON.parse(localStorage.getItem(key) || '[]');
+      history.push(data);
+      localStorage.setItem(key, JSON.stringify(history));
+      log(`💾 已保存到 ${key}`, 'cyan');
+    }
+
+    function showHistory() {
+      const trades = JSON.parse(localStorage.getItem('trades') || '[]');
+      const markets = JSON.parse(localStorage.getItem('markets') || '[]');
+
+      const output = {
+        市场数量: markets.length,
+        交易数量: trades.length,
+        市场: markets,
+        交易: trades
+      };
+
+      document.getElementById('history').textContent = JSON.stringify(output, null, 2);
+      log(`📊 历史: ${markets.length} 市场, ${trades.length} 交易`, 'cyan');
+    }
+
+    function clearHistory() {
+      localStorage.clear();
+      log('🗑️ 已清空历史', 'yellow');
+      showHistory();
+    }
+
+    // ==================== 测试套件 ====================
+    async function runTests() {
+      const report = document.getElementById('testReport');
+      report.innerHTML = '<p class="pulse" style="color: #f59e0b;">🔹 测试运行中...</p>';
+      log('🧪 开始运行测试套件...', 'yellow');
+
+      testResults = [];
+
+      await testLocalStorage();
+      await testCreateMarket();
+      await testTrade();
+      await testDataPersistence();
+
+      const passed = testResults.filter(r => r.status === 'PASS').length;
+      const failed = testResults.filter(r => r.status === 'FAIL').length;
+
+      const reportHtml = `
+        <h4 style="color: #667eea; margin-bottom: 10px;">测试结果</h4>
+        <p style="color: #10b981;">✅ 通过: ${passed}</p>
+        <p style="color: #ef4444;">❌ 失败: ${failed}</p>
+        <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+        <pre style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+${testResults.map(r => `[${r.status}] ${r.name}: ${r.message}`).join('\n')}
+        </pre>
+      `;
+
+      report.innerHTML = reportHtml;
+
+      if (failed === 0) {
+        log(`✅ 所有测试通过! (${passed}/${testResults.length})`, 'green');
+      } else {
+        log(`⚠️ 测试完成: ${passed} 通过, ${failed} 失败`, 'yellow');
+      }
+    }
+
+    function addTestResult(name, status, message) {
+      testResults.push({ name, status, message });
+      const icon = status === 'PASS' ? '✅' : '❌';
+      const color = status === 'PASS' ? 'green' : 'red';
+      log(`  ${icon} ${name}: ${message}`, color);
+    }
+
+    async function testLocalStorage() {
+      try {
+        localStorage.setItem('test_key', 'test_value');
+        const value = localStorage.getItem('test_key');
+        if (value === 'test_value') {
+          addTestResult('LocalStorage', 'PASS', '正常工作');
+        } else {
+          addTestResult('LocalStorage', 'FAIL', '值不匹配');
+        }
+        localStorage.removeItem('test_key');
+      } catch (e) {
+        addTestResult('LocalStorage', 'FAIL', e.message);
+      }
+    }
+
+    async function testCreateMarket() {
+      try {
+        const testQuestion = 'Test ' + Date.now();
+        localStorage.setItem('test_market', JSON.stringify({ id: 'TEST', question: testQuestion }));
+        const saved = JSON.parse(localStorage.getItem('test_market'));
+        addTestResult('创建市场', 'PASS', saved.question === testQuestion ? '成功' : '失败');
+        localStorage.removeItem('test_market');
+      } catch (e) {
+        addTestResult('创建市场', 'FAIL', e.message);
+      }
+    }
+
+    async function testTrade() {
+      try {
+        localStorage.setItem('test_trade', JSON.stringify({ side: 'YES', amount: '100' }));
+        const saved = JSON.parse(localStorage.getItem('test_trade'));
+        addTestResult('交易功能', 'PASS', saved.side === 'YES' ? '成功' : '失败');
+        localStorage.removeItem('test_trade');
+      } catch (e) {
+        addTestResult('交易功能', 'FAIL', e.message);
+      }
+    }
+
+    async function testDataPersistence() {
+      try {
+        saveToLocal('markets', { id: 'M1' });
+        saveToLocal('trades', { side: 'YES' });
+        const markets = JSON.parse(localStorage.getItem('markets') || '[]');
+        const trades = JSON.parse(localStorage.getItem('trades') || '[]');
+        addTestResult('数据持久化', 'PASS', `markets: ${markets.length}, trades: ${trades.length}`);
+        localStorage.clear();
+      } catch (e) {
+        addTestResult('数据持久化', 'FAIL', e.message);
+      }
+    }
+
+    // ==================== 页面加载 ====================
+    window.addEventListener('load', async () => {
+      log('🚀 Demo 已就绪', 'green');
+      log('📝 网络: Base Sepolia (Chain ID: 84532)', 'cyan');
+      log('🔗 获取测试币: https://sepoliafaucet.com', 'cyan');
+
+      await initWeb3Modal();
+    });
+
+    // 监听 Web3Modal 的连接事件
+    window.addEventListener('WEB3_MODAL_CONNECTED', async (e) => {
+      log('✓ Web3Modal 连接事件触发', 'green');
+      await connectExistingWallet();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+node_modules-hardhat/
+
+# Compiled contracts
+artifacts/
+cache/
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Coverage
+coverage/
+coverage.json
+
+# Hardhat
+typechain/
+typechain-types/
+
+# Foundry
+broadcast/
+
+# Temporary files
+*.tmp
+*.temp
