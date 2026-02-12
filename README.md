@@ -17,9 +17,8 @@ We eliminate the need for centralized oracles or subjective dispute resolution. 
 ---
 
 ## 📹 Demo Video
-https://github.com/lmmsoft/ProbForge/blob/main/demo_video.mov
 
-![demo_video](https://github.com/lmmsoft/ProbForge/raw/refs/heads/main/demo_video.mov)
+https://github.com/lmmsoft/ProbForge/blob/main/demo_video.mov
 
 ## 📸 Screenshots
 *(Add screenshots of your UI here)*
