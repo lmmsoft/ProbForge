@@ -12,6 +12,8 @@ We eliminate the need for centralized oracles or subjective dispute resolution. 
 - **No human intervention required.**
 - **Immediate payouts upon resolution.**
 
+![screenshout](screenshot.png)
+
 ---
 
 ## 📹 Demo Video
