@@ -52,17 +52,21 @@ contract Settlement {
             SettlementType settleType,
             uint256 targetValue,
             uint256 resolutionTime
-        ) = IMarket(market).getSettlementInfo();
+        ) = Market(market).getSettlementInfo();
 
         // 2. Check if resolution time has reached
         require(block.timestamp >= resolutionTime, "NOT_YET_RESOLVABLE");
-        require(IMarket(market).status() == IMarket.Status.ACTIVE, "NOT_ACTIVE");
+        require(Market(market).status() == Market.Status.ACTIVE, "NOT_ACTIVE");
 
-        // 3. Read Meme platform on-chain data and determine result
+        // 3. Verify curve validity
+        require(IMemeFactory(memeFactory).isCurve(targetCurve), "INVALID_CURVE");
+
+        // 4. Read Meme platform on-chain data and determine result
+
         result = _determineResult(targetCurve, settleType, targetValue);
 
         // 4. Execute market settlement
-        IMarket(market).resolve(result);
+        Market(market).resolve(result);
 
         // 5. Record actual settlement value (for frontend display)
         uint256 settleValue = _getSettleValue(targetCurve, settleType);
@@ -124,7 +128,7 @@ contract Settlement {
             address targetCurve,
             SettlementType settleType,
             uint256 targetValue,
-        ) = IMarket(market).getSettlementInfo();
+        ) = Market(market).getSettlementInfo();
 
         result = _determineResult(targetCurve, settleType, targetValue);
         settleValue = _getSettleValue(targetCurve, settleType);

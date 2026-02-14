@@ -14,4 +14,7 @@ interface IMemeFactory {
 
     /// @notice Get total number of curves
     function totalCurves() external view returns (uint256);
+
+    /// @notice Check if an address is a valid curve
+    function isCurve(address curve) external view returns (bool);
 }

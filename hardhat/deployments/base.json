@@ -1,0 +1,12 @@
+{
+  "network": "base",
+  "chainId": "8453",
+  "deployer": "0xC8300D749584ca940B90817753F5b1ea6f26d57b",
+  "contracts": {
+    "USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "MemeFactory": "0x07DFAEC8e182C5eF79844ADc70708C1c15aA60fb",
+    "Settlement": "0x3542234ad4c8edD8fb395892Db2F49E5B547ba0A",
+    "MarketFactory": "0xC227c2ED7a474e36569338bB19F4399cFed92809"
+  },
+  "deploymentTime": "2026-02-14T12:42:13.003Z"
+}

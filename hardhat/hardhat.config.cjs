@@ -10,18 +10,32 @@ module.exports = {
         enabled: true,
         runs: 200,
       },
+      viaIR: true,
     },
   },
   networks: {
     hardhat: {
-      chainId: 31337,
+      chainId: 8453,
+      viaIR: true,
+      hardfork: "cancun",
+      forking: {
+        url: process.env.BASE_MAINNET_RPC || "https://mainnet.base.org", // Use public RPC if env not set
+        enabled: process.env.ENABLE_FORK === "true",
+      },
+      chains: {
+        8453: {
+          hardforkHistory: {
+            cancun: 1,
+          },
+        },
+      },
     },
     sepolia: {
       url: process.env.RPC_URL || "https://sepolia.base.org",
       chainId: 84532,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
-    mainnet: {
+    base: {
       url: process.env.BASE_MAINNET_RPC || "https://base.drpc.org",
       chainId: 8453,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
@@ -32,5 +46,10 @@ module.exports = {
     tests: "./test",
     cache: "./cache",
     artifacts: "./artifacts",
+  },
+  etherscan: {
+    apiKey: {
+      base: process.env.BASESCAN_API_KEY || "",
+    },
   },
 };

@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "./Market.sol";
 import "./IMemeCurve.sol";
+import "./IMemeFactory.sol";
 
 /**
  * @title Settlement
@@ -47,22 +48,28 @@ contract Settlement {
      */
     function settle(address market) external returns (bool result) {
         // 1. Get market configuration
+        uint8 settleTypeInt;
         (
             address targetCurve,
-            SettlementType settleType,
+            uint8 _settleType,
             uint256 targetValue,
             uint256 resolutionTime
-        ) = IMarket(market).getSettlementInfo();
+        ) = Market(market).getSettlementInfo();
+        
+        SettlementType settleType = SettlementType(_settleType);
 
         // 2. Check if resolution time has reached
         require(block.timestamp >= resolutionTime, "NOT_YET_RESOLVABLE");
-        require(IMarket(market).status() == IMarket.Status.ACTIVE, "NOT_ACTIVE");
+        require(Market(market).status() == Market.Status.ACTIVE, "NOT_ACTIVE");
 
-        // 3. Read Meme platform on-chain data and determine result
+        // 3. Verify curve validity
+        require(IMemeFactory(memeFactory).isCurve(targetCurve), "INVALID_CURVE");
+
+        // 4. Read Meme platform on-chain data and determine result
         result = _determineResult(targetCurve, settleType, targetValue);
 
-        // 4. Execute market settlement
-        IMarket(market).resolve(result);
+        // 5. Execute market settlement
+        Market(market).resolve(result);
 
         // 5. Record actual settlement value (for frontend display)
         uint256 settleValue = _getSettleValue(targetCurve, settleType);
@@ -120,13 +127,14 @@ contract Settlement {
         view
         returns (bool result, uint256 settleValue)
     {
+        uint8 _settleType;
         (
             address targetCurve,
-            SettlementType settleType,
+            uint8 settleTypeInt,
             uint256 targetValue,
-        ) = IMarket(market).getSettlementInfo();
-
-        result = _determineResult(targetCurve, settleType, targetValue);
-        settleValue = _getSettleValue(targetCurve, settleType);
+        ) = Market(market).getSettlementInfo();
+        
+        result = _determineResult(targetCurve, SettlementType(settleTypeInt), targetValue);
+        settleValue = _getSettleValue(targetCurve, SettlementType(settleTypeInt));
     }
 }
