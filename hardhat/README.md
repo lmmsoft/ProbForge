@@ -1,89 +1,89 @@
-# Meme 概率协议 - Hardhat 项目
+# Meme Probability Protocol - Hardhat Project
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
 ```bash
-# 安装依赖
+# Install dependencies
 npm install
 
-# 编译合约
+# Compile contracts
 npx hardhat compile
 
-# 运行测试
+# Run tests
 npx hardhat test
 
-# 部署到本地网络
+# Deploy to local network
 npx hardhat run scripts/deploy.js
 
-# 部署到 Base Sepolia 测试网
+# Deploy to Base Sepolia Testnet
 npx hardhat run scripts/deploy.js --network sepolia
 
-# 创建测试市场
+# Create a test market
 npx hardhat run scripts/create-market.js --network sepolia
 ```
 
 ---
 
-## 📁 项目结构
+## 📁 Project Structure
 
 ```
 hardhat/
-├── contracts/          # Solidity 合约
-│   ├── MarketFactory.sol   # 工厂合约
-│   ├── Market.sol          # 市场合约 (AMM)
-│   ├── Settlement.sol      # 结算合约
-│   └── MockUSDC.sol        # 测试代币
-├── scripts/           # 部署脚本
-│   ├── deploy.js          # 部署所有合约
-│   └── create-market.js   # 创建市场
-├── test/              # 测试文件
+├── contracts/          # Solidity Contracts
+│   ├── MarketFactory.sol   # Factory Contract
+│   ├── Market.sol          # Market Contract (AMM + Orderbook)
+│   ├── Settlement.sol      # Settlement Contract
+│   └── MockUSDC.sol        # Test Token
+├── scripts/           # Deployment Scripts
+│   ├── deploy.js          # Deploy all contracts
+│   └── create-market.js   # Create a new market
+├── test/              # Tests
 │   └── MarketFactory.test.js
-├── hardhat.config.cjs  # Hardhat 配置
-├── .env.example       # 环境变量模板
-└── DEPLOYMENT_GUIDE.md # 完整部署指南
+├── hardhat.config.cjs  # Hardhat Configuration
+├── .env.example       # Environment Variables Template
+└── DEPLOYMENT_GUIDE.md # Full Deployment Guide
 ```
 
 ---
 
-## 🎯 核心功能
+## 🎯 Core Features
 
-### 1. MarketFactory (工厂)
+### 1. MarketFactory
 
-- ✅ 使用 CREATE2 创建市场
-- ✅ 收取保证金防垃圾
-- ✅ 记录所有市场
+- ✅ Create markets using CREATE2
+- ✅ Anti-spam deposit mechanism
+- ✅ Registry of all markets
 
-### 2. Market (市场)
+### 2. Market
 
 - ✅ **Stage 0**: AMM Bonding Curve
 - ✅ **Stage 1**: Hybrid (AMM + Orderbook)
-- ✅ **Stage 2**: 纯 Orderbook
-- ✅ 买卖 YES/NO 份额
-- ✅ 自动价格发现
+- ✅ **Stage 2**: Pure Orderbook
+- ✅ Buy/Sell YES/NO shares
+- ✅ Automatic price discovery
 
-### 3. Settlement (结算)
+### 3. Settlement
 
-- ✅ 乐观结算机制
-- ✅ 挑战期 (3 天)
-- ✅ 保证金制度
+- ✅ **On-Chain Automatic Settlement**: Markets settle automatically based on on-chain data verification.
+- ✅ No manual intervention required.
+- ✅ Secure and transparent resolution logic.
 
 ### 4. MockUSDC
 
-- ✅ ERC20 代币 (6 位小数)
-- ✅ Faucet 水龙头功能
+- ✅ ERC20 Token (6 decimals)
+- ✅ Faucet functionality for testing
 
 ---
 
-## 🧪 测试结果
+## 🧪 Test Results
 
 ```bash
 npx hardhat test
 ```
 
 ```
-Meme 概率协议 - 完整测试
+Meme Probability Protocol - Full Test Suite
 
-=== 测试账户 ===
+=== Test Accounts ===
 Owner: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 User1: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
 
@@ -92,15 +92,15 @@ User1: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
 
 ---
 
-## 📊 合约交互示例
+## 📊 Contract Interactions
 
-### 1. 创建市场
+### 1. Create Market
 
 ```javascript
 const factory = await ethers.getContractFactory("MarketFactory");
 
 await factory.createMarket(
-    "比特币年底能突破 $100k?",
+    "Will Bitcoin break $100k by year end?",
     0,                           // templateId
     1735689600,                 // resolutionTime
     ethers.parseEther("0.5"),  // initialYesPrice
@@ -108,19 +108,19 @@ await factory.createMarket(
 );
 ```
 
-### 2. AMM 交易
+### 2. AMM Trading
 
 ```javascript
 const market = await ethers.getContractAt("Market", marketAddress);
 
-// 买入 YES
+// Buy YES shares
 await market.buy(0, ethers.parseUnits("100", 6));
 
-// 卖出 YES
+// Sell YES shares
 await market.sell(0, ethers.parseUnits("50", 18));
 ```
 
-### 3. 查询价格
+### 3. Query Price
 
 ```javascript
 const yesPrice = await market.getYesPrice();  // 0.5 = 50%
@@ -129,20 +129,20 @@ const noPrice = await market.getNoPrice();    // 0.5 = 50%
 
 ---
 
-## 🔗 网络配置
+## 🔗 Network Configuration
 
-### 本地测试网
+### Local Network
 
 ```javascript
 chainId: 31337
 rpc: "http://localhost:8545"
 ```
 
-### Base Sepolia (测试网)
+### Base Sepolia (Testnet)
 
 ```javascript
 chainId: 84532
-rpc: "https://sepolia.base.org
+rpc: "https://sepolia.base.org"
 faucet: "https://sepoliafaucet.com"
 ```
 
@@ -155,9 +155,9 @@ rpc: "https://mainnet.base.org"
 
 ---
 
-## 📝 环境变量
+## 📝 Environment Variables
 
-创建 `.env` 文件：
+Create a `.env` file:
 
 ```env
 PRIVATE_KEY=your_private_key_here
@@ -167,41 +167,41 @@ BASESCAN_API_KEY=your_basescan_api_key
 
 ---
 
-## 🐛 故障排除
+## 🐛 Troubleshooting
 
-### 编译失败
+### Compilation Errors
 
 ```bash
-# 清除缓存
+# Clear cache
 npx hardhat clean
 npx hardhat compile
 ```
 
-### 测试失败
+### Test Failures
 
 ```bash
-# 使用详细日志
+# Verbose logging
 npx hardhat test --verbose
 ```
 
-### 部署失败
+### Deployment Failures
 
-- 检查私钥格式
-- 确保有足够的 ETH
-- 检查网络配置
-
----
-
-## 📚 文档
-
-- [完整部署指南](./DEPLOYMENT_GUIDE.md)
-- [参考文档](../reference.md)
+- Check private key format
+- Ensure sufficient ETH balance
+- Verify network configuration
 
 ---
 
-## 🤝 贡献
+## 📚 Documentation
 
-欢迎提交 Issue 和 Pull Request！
+- [Full Deployment Guide](./DEPLOYMENT_GUIDE.md)
+- [Reference Documentation](../reference.md)
+
+---
+
+## 🤝 Contributing
+
+Issues and Pull Requests are welcome!
 
 ---
 
